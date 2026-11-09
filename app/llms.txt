@@ -1,0 +1,11 @@
+# スクワットを数えよう（リザバーコンピューティング）
+> スマホの加速度から、スクワットの回数をブラウザの中で数える小さな作品。3 回分の動きで学習する。
+
+- 計算の中身: エコーステートネットワーク（内部 100・疎・スペクトル半径 0.9・漏れ率あり・乱数の種は固定）。学習は出力の重みだけをリッジ回帰で解く。
+- 画面: app/index.html（外の読み込み無しの 1 枚）。データは端末の外へ出ない。
+- AI の口: mcp/server.mjs（MCP の stdio・JSON-RPC 2.0・依存なし・node 18 以上）。
+- 道具 train: 3 回分の加速度 samples（[x,y,z] の列・50Hz・重力込み）→ 重み JSON。marks_s（1 回ごとの印・秒）は省略可（山から自動）。
+- 道具 count_reps: samples と weights（train の返り値）か train_samples → count と times_s（各回の時刻・秒）。
+- 計算部品: app/esn.js（ESN.train・ESN.countReps・ESN.synthSquat など）。画面・MCP・試験が同じ物を使う。
+- 試験: node test/test.mjs（作り物の波で ±1 回以内・動かない信号は 0 回）。
+- 限界: 作り物の波と作り物の雑音での確認。実機の動きでは未検証。

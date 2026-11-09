@@ -1,0 +1,1 @@
+{ "name": "reservoir-squat-counter", "version": "1.0.0", "private": true, "type": "commonjs", "scripts": { "build": "node build.mjs", "test": "node test/test.mjs" } }

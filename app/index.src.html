@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>スクワットを数えよう｜ブラウザの中のリザバーコンピューティング</title>
+<style>
+:root{--bg:#15181C;--card:#1D2127;--line:#2B3037;--fg:#FFFFFF;--mute:#A9B0B8;--lime:#B8F25B;--limeD:#5C7A2B}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--fg)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif;line-height:1.55;-webkit-text-size-adjust:100%}
+.wrap{max-width:460px;margin:0 auto;padding:calc(14px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom))}
+h1{font-size:24px;line-height:1.25;margin:2px 0 2px;text-align:center;font-weight:800;letter-spacing:.02em}
+.sub{margin:0 0 10px;text-align:center;color:var(--mute);font-size:12.5px}
+.steps{display:flex;align-items:flex-start;justify-content:space-between;gap:4px;margin:0 0 10px;padding:0;list-style:none}
+.steps li{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:5px;padding-bottom:7px;border-bottom:3px solid transparent;color:var(--mute);font-size:12.5px;font-weight:700;text-align:center;line-height:1.3}
+.steps .n{width:28px;height:28px;border-radius:50%;background:#8D949C;color:#15181C;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800}
+.steps li.on{color:var(--fg);border-bottom-color:var(--lime)}
+.steps li.on .n{background:var(--lime)}
+.steps li.done .n{background:var(--limeD);color:#fff}
+.guide{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:9px 12px;margin:0 0 10px;font-size:12.5px;line-height:1.5}
+.guide b{color:var(--lime)}
+.guide p{margin:1px 0}
+.stage{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:8px;margin:0 0 10px}
+.side{display:flex;flex-direction:column;gap:8px;min-width:0}
+.reservoir{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 8px 8px;position:relative;min-width:0}
+.reservoir h2,.strip h2{margin:0 0 4px;font-size:11.5px;font-weight:700;color:var(--mute);letter-spacing:.03em}
+#grid{display:block;width:100%;max-width:320px;aspect-ratio:1/1;margin:0 auto;touch-action:manipulation;cursor:pointer}
+.badge{display:block;width:max-content;margin:6px auto 0;font-size:11px;font-weight:700;color:#15181C;background:var(--lime);border-radius:99px;padding:2px 10px;visibility:hidden}
+.badge.show{visibility:visible}
+.strip{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 10px 6px;flex:1;display:flex;flex-direction:column;min-width:0}
+.strip h2{font-size:11px;line-height:1.3}
+#wave{display:block;width:100%;flex:1;min-height:44px}
+.countbox{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 14px 8px;display:flex;flex-direction:column;align-items:flex-start;gap:0}
+.countbox .lab{font-size:15px;font-weight:800;color:var(--fg)}
+#count{font-size:64px;line-height:1;font-weight:800;color:var(--lime);font-variant-numeric:tabular-nums;transition:transform .15s}
+#count.pulse{transform:scale(1.12)}
+.countbox .unit{font-size:24px;font-weight:800}
+.row2{display:flex;align-items:baseline;gap:8px}
+.status{min-height:40px;margin:0 0 8px;font-size:12.5px;line-height:1.5;color:var(--fg);text-align:center}
+.status.warn{color:#FFD27A}
+button{font-family:inherit;border:0;cursor:pointer}
+#main{width:100%;height:64px;border-radius:32px;background:var(--lime);color:#15181C;font-size:26px;font-weight:800;letter-spacing:.04em}
+#main:active{filter:brightness(.92)}
+#main.stop{background:#FF8A6B}
+.row{display:flex;gap:8px;margin-top:10px}
+.row button{flex:1;min-height:44px;border-radius:22px;background:transparent;color:var(--fg);border:1.5px solid #474E57;font-size:13.5px;font-weight:700;padding:6px 10px}
+.row button:disabled{opacity:.35;cursor:default}
+.how{margin-top:16px;color:var(--mute);font-size:12.5px}
+.how h2{font-size:13px;color:var(--fg);margin:0 0 4px}
+.how p{margin:4px 0}
+.how code{color:var(--lime);font-size:12px}
+@media (min-width:900px){
+  .wrap{max-width:980px;padding-top:18px}
+  h1{font-size:34px}.sub{font-size:15px;margin-bottom:16px}
+  .steps li{flex-direction:row;justify-content:center;font-size:17px;gap:12px}
+  .stage{grid-template-columns:1.25fr 1fr;align-items:stretch;gap:12px}
+  .reservoir{padding:16px}
+  #grid{max-width:330px}
+  .side{gap:12px}
+  .countbox{justify-content:center;padding:18px 26px}
+  .countbox .lab{margin:0 0 4px;font-size:20px}
+  #count{font-size:120px}
+    .countbox .unit{font-size:36px}
+  #main{height:68px;font-size:28px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>スクワットを数えよう</h1>
+  <p class="sub">スマホの動きで、リザバーコンピューティングが学習します</p>
+
+  <ol class="steps" id="steps">
+    <li class="on" data-s="1"><span class="n">1</span><span>3回動いて見せる</span></li>
+    <li data-s="2"><span class="n">2</span><span>覚える</span></li>
+    <li data-s="3"><span class="n">3</span><span>数える</span></li>
+  </ol>
+
+  <div class="guide" id="guide">
+    <p><b>何から押すか</b>　下の緑のボタン「まず 3 回」を押して、スマホを持ったままスクワットを 3 回します。</p>
+    <p>データはこの端末の外へ出ません。お金もかかりません。登録も要りません。</p>
+    <p>パソコンなどセンサーが無いときは「見本の動き」で試せます（作り物の波形）。</p>
+  </div>
+
+  <div class="stage">
+    <div class="reservoir">
+      <h2>リザバーの中（100 個のうち 64 個）</h2>
+      <canvas id="grid" width="320" height="320" aria-label="リザバーの内部の状態を光る点の格子で表示"></canvas>
+      <span class="badge" id="badge">作り物の波形で動作中</span>
+    </div>
+    <div class="side">
+      <div class="countbox"><span class="lab">回数</span><span class="row2"><span id="count">0</span><span class="unit">回</span></span></div>
+      <div class="strip"><h2 id="waveTitle">入力（加速度の大きさ）</h2><canvas id="wave" width="400" height="64"></canvas></div>
+    </div>
+  </div>
+
+  <p class="status" id="status" role="status" aria-live="polite">準備ができました。</p>
+
+  <button id="main" type="button">まず 3 回</button>
+  <div class="row">
+    <button id="demo" type="button">見本の動き（作り物）</button>
+    <button id="reset" type="button">最初から</button>
+  </div>
+
+  <div class="how">
+    <h2>しくみ</h2>
+    <p>リザバーコンピューティングは、内部の結合（100 個・疎・乱数で作って固定）はそのままにして、出力の重みだけをリッジ回帰で解く方法です。計算が軽く、学習が数十ミリ秒で終わるので、スクワット 3 回分でも覚えられます（この作品の範囲での話で、どんな動きでも数えられるわけではありません）。</p>
+    <p>数え方は、出力がしきい値を上下に横切るたびに 1 回です。1 秒より短い間隔は数えません。</p>
+    <p>AI エージェントからも使えます。同じ計算部品を使う MCP サーバー（stdio）と <code>llms.txt</code> を同梱しています。</p>
+  </div>
+</div>
+
+<script>
+/*__ESN__*/
+</script>
+<script>
+(function () {
+  'use strict';
+  var E = window.ESN, C = E.CFG, RATE = C.rate, DT = 1000 / RATE;
+  var $ = function (id) { return document.getElementById(id); };
+  var el = { main: $('main'), demo: $('demo'), reset: $('reset'), status: $('status'), count: $('count'), grid: $('grid'),
+             wave: $('wave'), waveTitle: $('waveTitle'), badge: $('badge'), steps: $('steps'), guide: $('guide') };
+  var H = (location.hash || '').replace(/^#/, '').split('&').reduce(function (o, kv) { var p = kv.split('='); if (p[0]) o[p[0]] = p[1] === undefined ? '1' : p[1]; return o; }, {});
+  var SPEED = Math.max(1, +H.speed || 1);
+
+  var S = { mode: 'idle', src: null, buf: [], taps: [], weights: null, runner: null, counter: null, hist: [], histMode: 'in',
+            latest: null, gotSensor: false, listening: false, timer: null, pulseT: 0, lastY: 0, demoQueue: null };
+
+  function say(t, warn) { el.status.textContent = t; el.status.className = 'status' + (warn ? ' warn' : ''); }
+  function setSteps(cur, doneUpTo) {
+    Array.prototype.forEach.call(el.steps.children, function (li) {
+      var s = +li.getAttribute('data-s');
+      li.className = (s === cur ? 'on' : '') + (s <= doneUpTo ? ' done' : '');
+    });
+  }
+  function setButtons() {
+    var m = S.mode, feeding = !!S.timer && S.src === 'demo';
+    el.main.textContent = { idle: 'まず 3 回', recording: '覚える', trained: '数え始める', counting: '止める' }[m];
+    el.main.className = m === 'counting' ? 'stop' : '';
+    el.main.id = 'main';
+    el.demo.disabled = !(m === 'idle' || m === 'trained') || feeding;
+    el.demo.textContent = m === 'trained' ? '見本の動き（作り物）で数える' : '見本の動き（作り物）';
+    el.badge.className = 'badge' + (S.src === 'demo' ? ' show' : '');
+    el.guide.style.display = (m === 'idle') ? '' : 'none';   // 最初の画面だけ「何から押すか」を出す
+  }
+
+  // ---- センサー ----
+  function onMotion(e) {
+    var a = e.accelerationIncludingGravity;
+    if (a && a.x !== null && a.y !== null && a.z !== null && a.x !== undefined) { S.latest = [a.x, a.y, a.z]; S.gotSensor = true; }
+  }
+  function ensureSensor(cb) {   // iPhone は押下の中で許可を求める必要がある
+    if (typeof DeviceMotionEvent === 'undefined') return cb(false, 'この端末のブラウザには動きセンサーがありません。');
+    var go = function () {
+      if (!S.listening) { window.addEventListener('devicemotion', onMotion); S.listening = true; }
+      cb(true);
+    };
+    if (typeof DeviceMotionEvent.requestPermission === 'function') {
+      DeviceMotionEvent.requestPermission().then(function (r) { r === 'granted' ? go() : cb(false, '動きの許可が出ませんでした。設定で許可するか、見本の動きを使ってください。'); },
+        function () { cb(false, '動きの許可を取れませんでした（https のページで開く必要があります）。見本の動きは使えます。'); });
+    } else go();
+  }
+  function startSensorFeed() {
+    S.src = 'sensor'; S.latest = null; S.gotSensor = false;
+    var t0 = performance.now(), n = 0, waited = 0;
+    S.timer = setInterval(function () {
+      var due = Math.floor((performance.now() - t0) / DT) - n, k;
+      if (due > 5) due = 5;
+      if (!S.gotSensor) { waited += 1; if (waited > 80) { stopFeed(); toIdle(); say('動きのデータが来ません（パソコンなどセンサーの無い端末です）。「見本の動き」で試せます。', true); } return; }
+      for (k = 0; k < due; k++) { n++; sample(S.latest); }
+    }, DT / 2);
+  }
+  function stopFeed() { if (S.timer) { clearInterval(S.timer); S.timer = null; } }
+
+  // ---- 見本の動き（作り物の波形）----
+  function startDemo(sig, onEnd) {
+    S.src = 'demo'; var i = 0;
+    stopFeed();
+    S.timer = setInterval(function () {
+      for (var k = 0; k < SPEED && i < sig.samples.length; k++) sample(sig.samples[i++]);
+      if (i >= sig.samples.length) { stopFeed(); setButtons(); if (onEnd) onEnd(); }
+    }, DT);
+    setButtons();
+  }
+
+  // ---- 標本が 1 つ届くたびの処理 ----
+  function sample(s) {
+    if (!S.runner) return;
+    var y = S.runner.push(s);
+    var u0 = S.runner.lastU ? S.runner.lastU[0] : 0;
+    if (S.mode === 'recording') { S.buf.push(s); S.hist.push(S.runner.pre.lastNorm); }
+    else if (S.mode === 'counting') {
+      S.lastY = y; S.hist.push(y);
+      if (S.runner.step > C.washout && S.counter.push(y)) { el.count.textContent = S.counter.count; S.pulseT = performance.now(); }
+      else if (S.runner.step <= C.washout) S.counter.i++;
+    }
+    if (S.hist.length > 300) S.hist.shift();
+  }
+
+  // ---- 状態の遷移 ----
+  function mkRunner(w) {
+    var r = new E.Runner(w || null);
+    var p = r.pre.push.bind(r.pre);
+    r.pre.push = function (s) { var u = p(s); r.pre.lastNorm = u[0]; return u; };
+    return r;
+  }
+  function toIdle() {
+    stopFeed(); S.mode = 'idle'; S.src = null; S.buf = []; S.taps = []; S.hist = []; S.histMode = 'in';
+    S.runner = mkRunner(null); setSteps(1, 0); setButtons();
+    el.waveTitle.textContent = '入力（加速度の大きさ）';
+  }
+  function beginRecording() {
+    S.mode = 'recording'; S.buf = []; S.taps = []; S.hist = []; S.histMode = 'in'; S.runner = mkRunner(null);
+    setSteps(1, 0); setButtons();
+    el.waveTitle.textContent = '入力（加速度の大きさ）';
+    say('記録中です。スクワットを 3 回して、終わったら「覚える」を押します。1 回ごとに光る点の格子を軽くたたくと、区切りを教えられます（たたかなくても山を自動で探します）。');
+  }
+  function learn() {
+    stopFeed();
+    setSteps(2, 1);
+    var secs = S.buf.length / RATE;
+    if (S.buf.length < RATE * 3) { toIdle(); say('記録が短すぎます（' + secs.toFixed(1) + ' 秒）。もう一度「まず 3 回」から。', true); return; }
+    var marks = E.findPeaks(S.buf, RATE);
+    if (S.taps.length >= 2) {   // たたいた印を、近い山があればそこへ寄せる
+      marks = S.taps.map(function (t) { var b = null, bd = 0.7; marks.forEach(function (m) { if (Math.abs(m - t) < bd) { bd = Math.abs(m - t); b = m; } }); return b === null ? t : b; })
+                    .filter(function (m, i, a) { return a.indexOf(m) === i; });
+    }
+    try {
+      var w = E.train(S.buf, marks.length >= 2 ? marks : null);
+      S.weights = { cfg: w.cfg, wout: w.wout }; S.mode = 'trained'; S.src = null;
+      S.runner = mkRunner(S.weights); S.hist = []; setSteps(3, 2); setButtons();
+      say('覚えました。出力の重み ' + w.wout.length + ' 個を ' + w.solve_ms + ' ミリ秒で解きました（見つけた動きの区切り ' + w.marks.length + ' か所）。「数え始める」を押して、スクワットを続けてください。');
+    } catch (e) {
+      toIdle(); say('動きの山が見つかりませんでした。もう少し大きく、3 回続けて動いてから「覚える」を押してください。', true);
+    }
+  }
+  function beginCounting() {
+    S.mode = 'counting'; S.runner = mkRunner(S.weights); S.counter = new E.Counter(S.weights.cfg); S.hist = []; S.histMode = 'out';
+    el.count.textContent = '0'; setSteps(3, 2); setButtons();
+    el.waveTitle.textContent = '出力（上下のしきい値を横切ると 1 回）';
+    say('数えています。スクワットを続けてください。');
+  }
+  function stopCounting() {
+    stopFeed(); S.mode = 'trained'; S.src = null; S.runner = mkRunner(S.weights); setButtons();
+    say(el.count.textContent + ' 回数えました。もう一度「数え始める」で続けられます。');
+  }
+
+  // ---- ボタン ----
+  el.main.addEventListener('click', function () {
+    if (S.mode === 'idle') {
+      ensureSensor(function (ok, why) {   // 許可の確認は押下の中で呼ばれる
+        if (!ok) { say(why, true); return; }
+        beginRecording(); startSensorFeed();
+      });
+    } else if (S.mode === 'recording') learn();
+    else if (S.mode === 'trained') {
+      beginCounting();
+      if (S.src !== 'demo') ensureSensor(function (ok, why) { if (!ok) { stopCounting(); say(why, true); return; } startSensorFeed(); });
+    } else if (S.mode === 'counting') stopCounting();
+  });
+  el.demo.addEventListener('click', function () {
+    if (S.mode === 'idle') {
+      beginRecording();
+      say('見本の動き（作り物の波形）で 3 回分を記録しています。終わると自動で止まるので「覚える」を押してください。');
+      startDemo(E.synthSquat({ reps: 3, period: 2.0, seed: 11, lead: 1.2 }), function () { say('3 回分を記録しました（作り物の波形）。「覚える」を押してください。'); });
+    } else if (S.mode === 'trained') {
+      beginCounting();
+      say('見本の動き（作り物の波形・1 回 1.7 秒・12 回）を数えています。');
+      startDemo(E.synthSquat({ reps: 12, period: 1.7, seed: 51 }), function () {
+        if (!H.until) { stopCounting(); say(el.count.textContent + ' 回数えました（正解は 12 回の作り物の波形）。', false); }
+      });
+    }
+  });
+  el.reset.addEventListener('click', function () { S.weights = null; el.count.textContent = '0'; toIdle(); say('最初に戻しました。「まず 3 回」を押してください。'); });
+  el.grid.addEventListener('pointerdown', function () {
+    if (S.mode === 'recording') { S.taps.push(S.buf.length / RATE); say('区切りを ' + S.taps.length + ' 回教えてもらいました。'); }
+  });
+
+  // ---- 描く ----
+  var gctx = el.grid.getContext('2d'), wctx = el.wave.getContext('2d');
+  function fit(cv, w, h) {
+    var r = cv.getBoundingClientRect(), d = window.devicePixelRatio || 1, W = Math.round((w || r.width) * d), Hh = Math.round((h || r.height) * d);
+    if (cv.width !== W || cv.height !== Hh) { cv.width = W; cv.height = Hh; }
+    return { w: cv.width, h: cv.height, d: d };
+  }
+  function drawGrid() {
+    var f = fit(el.grid), g = gctx, n = 8, cell = f.w / n, x = S.runner ? S.runner.x : null, i, r, c;
+    g.clearRect(0, 0, f.w, f.h);
+    for (i = 0; i < 64; i++) {
+      r = Math.floor(i / n); c = i % n;
+      var v = x ? Math.min(1, Math.abs(x[i]) / 0.5) : 0, b = Math.pow(v, 0.8);
+      var cx = (c + 0.5) * cell, cy = (r + 0.5) * cell;
+      g.save();
+      g.shadowColor = 'rgba(184,242,91,' + (0.9 * b) + ')'; g.shadowBlur = 16 * b * f.d;
+      g.fillStyle = 'rgba(184,242,91,' + (0.13 + 0.87 * b) + ')';
+      g.beginPath(); g.arc(cx, cy, cell * 0.25, 0, 7); g.fill();
+      g.restore();
+    }
+  }
+  function drawWave() {
+    var f = fit(el.wave), g = wctx, h = S.hist, W = f.w, Hh = f.h, d = f.d, i;
+    g.clearRect(0, 0, W, Hh);
+    var lo, hi;
+    if (S.histMode === 'out') { lo = -0.2; hi = 1.2;
+      g.strokeStyle = '#47505A'; g.lineWidth = d; g.setLineDash([4 * d, 4 * d]);
+      [C.hi, C.lo].forEach(function (th) { var yy = Hh - (th - lo) / (hi - lo) * Hh; g.beginPath(); g.moveTo(0, yy); g.lineTo(W, yy); g.stroke(); });
+      g.setLineDash([]);
+    } else { lo = -1.2; hi = 1.2; g.strokeStyle = '#2B3037'; g.lineWidth = d; var y0 = Hh * 0.5; g.beginPath(); g.moveTo(0, y0); g.lineTo(W, y0); g.stroke(); }
+    if (!h.length) return;
+    g.strokeStyle = '#B8F25B'; g.lineWidth = 2 * d; g.lineJoin = 'round'; g.beginPath();
+    for (i = 0; i < h.length; i++) {
+      var xx = W - (h.length - 1 - i) * (W / 300), yy2 = Hh - (Math.max(lo, Math.min(hi, h[i])) - lo) / (hi - lo) * Hh;
+      i ? g.lineTo(xx, yy2) : g.moveTo(xx, yy2);
+    }
+    g.stroke();
+  }
+  function frame() {
+    drawGrid(); drawWave();
+    el.count.className = (performance.now() - S.pulseT < 180) ? 'pulse' : '';
+    requestAnimationFrame(frame);
+  }
+
+  // ---- 起動 ----
+  toIdle(); setButtons(); frame();
+  window.__squat = { S: S, E: E, press: function () { el.main.click(); }, demo: function () { el.demo.click(); } };
+
+  // 撮影・自動確認用：#auto&speed=8&until=9 のように開くと、見本の動きで自動で最後まで進む
+  if (H.auto) {
+    var until = H.until ? +H.until : 1e9;
+    setTimeout(function () { el.demo.click(); }, 150);
+    var iv = setInterval(function () {
+      if (S.mode === 'recording' && !S.timer) { el.main.click(); }
+      else if (S.mode === 'trained' && !S.timer && S.weights && !S.autoStarted) { S.autoStarted = true; el.demo.click(); }
+      if (S.mode === 'counting' && H.until && S.runner.step / RATE >= until) { stopFeed(); setButtons(); clearInterval(iv); }
+    }, 100);
+  }
+})();
+</script>
+</body>
+</html>
